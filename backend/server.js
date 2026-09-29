@@ -1,29 +1,54 @@
-const express = require('express');
-const cors = require('cors');
-const router = require('./routes');
+const express = require('express')
+const app = express()
+const db = require('./database')
+app.use(express.json())
 
-const app = express();
-const PORT = 3000;
+app.get('/data', (req, res) => {
+    const sqlQuery = "SELECT * FROM mahasiswa"
 
-// Middleware
-app.use(cors());
-app.use(express.json());          // penting! biar req.body bisa dibaca
-app.use(express.urlencoded({ extended: true }));
+    db.query(sqlQuery, (err, result) => {
+        if (err) {
+            console.log(err)
+            res.status(500).send({ error: 'Gagal mengambil data' })
+        } else {
+            console.log(result)
+            res.send(result)
+        }
+    })
+})
 
-// Routes
-app.use('/api', router);
+app.post('/post/buat', (req, res) => {
+    const { user_name, user_email, user_password } = req.body
+    const sql = "INSERT INTO mahasiswa (user_name, user_email, user_password) VALUES (?, ?, ?)"
 
-// Root
-app.get('/', (req, res) => {
-  res.json({ message: 'API jalan 🚀', info: 'Coba GET /api/mahasiswa' });
-});
+    db.query(sql, [user_name, user_email, user_password], (err, result) => {
+        if (err) {
+            console.log(err)
+            res.status(500).send({ error: 'Gagal menambah data' })
+        } else {
+            res.send({ message: 'Data berhasil ditambahkan', id: result.insertId })
+        }
+    })
+})
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: `Route ${req.method} ${req.url} tidak ditemukan` });
-});
+app.put('/post/update/:id', (req, res) => {
+    const { id } = req.params
+    const { user_name, user_email, user_password } = req.body
 
-// Start
-app.listen(PORT, () => {
-  console.log(`Server jalan di http://localhost:${PORT}`);
-});
+    const sql = "UPDATE mahasiswa SET user_name = ?, user_email = ?, user_password = ? WHERE id = ?"
+
+    db.query(sql, [user_name, user_email, user_password, id], (err, result) => {
+        if (err) {
+            console.log(err)
+            res.status(500).send({ error: 'Gagal mengupdate data' })
+        } else if (result.affectedRows === 0) {
+            res.status(404).send({ error: 'Data tidak ditemukan' })
+        } else {
+            res.send({ message: 'Data berhasil diupdate', id: id })
+        }
+    })
+})
+
+app.listen(3000, () => {
+    console.log('Server jalan di port 3000')
+})
